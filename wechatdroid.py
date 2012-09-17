@@ -74,12 +74,13 @@ class WechatDroid:
         
         print 'getting verify code'
         r = self._httpGet(self.checkinURI.format(self.uin))
-        matchResult = re.match(r"\w+\('(\d)','(.*)','(.*)'\);", r)
-        if matchResult.group(1) != 0:
-            return matchResult.group(2), matchResult.group(3)
-        else:
-            print 'verify code needed!\ntry login on this IP address 4 or 5 times to avoid this.'
-            sys.exit(-1)# ugly, i know it
+        if r is not None:
+            matchResult = re.match(r"\w+\('(\d)','(.*)','(.*)'\);", r)
+            if matchResult.group(1) != 0:
+                return matchResult.group(2), matchResult.group(3)
+            else:
+                print 'verify code needed!\ntry login on this IP address 4 or 5 times to avoid this.'
+                sys.exit(-1)# ugly, i know it
 
     def login(self):
         '''登录'''
@@ -96,7 +97,10 @@ class WechatDroid:
         data = {'ajax': 'true'}
         r = self._httpPost(self.getMsgNumURI, params=params, data=data)
         #print '%s new messages'% r.json['newTotalMsgCount']
-        return int(r['newTotalMsgCount'])
+        try:
+            return int(r['newTotalMsgCount'])
+        except:
+            return 0
 
     def _processMsg(self, msg):
         '''处理消息'''
@@ -170,18 +174,19 @@ class WechatDroid:
             'day': '0' #'0' means today
         }
         r = self._httpGet(self.getMsgURI, params=params)
-        print 'getting last msg id...'
-        self.lastMsgId = re.findall(r"DATA.lastMsgId = '(\d+)';", r)[0]
-        print 'getting msgList...'
-        msgsString = re.findall(r"DATA\.List\.msgList\s=\s(.*);DATA\.lastMsgId", r.replace('\n', '').replace("'", '"').replace(r'\x', ''))[0]
-        msgs = json.loads(msgsString)
+        if r is not None:
+            print 'getting last msg id...'
+            self.lastMsgId = re.findall(r"DATA.lastMsgId = '(\d+)';", r)[0]
+            print 'getting msgList...'
+            msgsString = re.findall(r"DATA\.List\.msgList\s=\s(.*);DATA\.lastMsgId", r.replace('\n', '').replace("'", '"').replace(r'\x', ''))[0]
+            msgs = json.loads(msgsString)
 
-        if init == True:
-            self.msgPool.extend([msg['id'] for msg in msgs])
-            print '%s initial messages got!' %len(self.msgPool)
-        else:
-            print 'getting messages...'
-            self.msgNew.extend(msgs)
+            if init == True:
+                self.msgPool.extend([msg['id'] for msg in msgs])
+                print '%s initial messages got!' %len(self.msgPool)
+            else:
+                print 'getting messages...'
+                self.msgNew.extend(msgs)
 
     def work(self):
         '''
@@ -191,7 +196,8 @@ class WechatDroid:
 
         #初始化
         print 'work started'
-        self._getMsg(init=True)
+        while self.lastMsgId == '':
+            self._getMsg(init=True)
         self.msgPool.append(-1) #in case no initial messages got, negative one is smaller than any str
         self.msgPool.sort()
         #print 'now,we have %s messages in pool' %len(self.msgPool)
