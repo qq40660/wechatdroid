@@ -136,8 +136,7 @@ class WechatDroid:
             print answers
             if answers == []:
                 c.execute("insert into unknown (question) values (?)", (question,))
-                self._sendMsg(fakeId=msg['fakeId'], content=u'这是什么?')
-                self._sendMsg(fakeId=msg['fakeId'], content=u'可以使用\n"teach 问题=答案"\n来教我哦。')
+                self._sendMsg(fakeId=msg['fakeId'], content=u'你把小航问倒了...\n可以使用\n"teach 问题=答案"\n来教我哦。\n例如：teach来搞基么=下次在说吧！')
             else:
                 #[(answer1,), (answer2,)]
                 #print random.sample(answers,1)[0][0]
