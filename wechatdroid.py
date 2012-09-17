@@ -9,7 +9,7 @@ __date__ = '2012-09-15'
 __license__ = 'MIT'
 __version__ = '0.1'
 
-import requests, hashlib, re, json, sqlite3, random, sys
+import requests, hashlib, re, json, sqlite3, random, sys, time
 
 class WechatDroid:
 
@@ -33,7 +33,7 @@ class WechatDroid:
         self.sendMsgURI = r'http://mp.weixin.qq.com/cgi-bin/singlesend'
         #用于获取新消息
         self.lastMsgId = ''
-        
+        #sqlite3数据库,请用wechatdroid.sql初始化
         self.db = './wechatdroid.db'
 
     def _httpPost(self, uri, data=None, params=None):
@@ -79,7 +79,7 @@ class WechatDroid:
             if matchResult.group(1) != 0:
                 return matchResult.group(2), matchResult.group(3)
             else:
-                print 'verify code needed!\ntry login on this IP address 4 or 5 times to avoid this.'
+                print 'verify code needed!\ntry login with this IP address 4 or 5 times to avoid this.'
                 sys.exit(-1)# ugly, i know it
 
     def login(self):
@@ -207,7 +207,7 @@ class WechatDroid:
             if newMsgNum > 0:
                 self._getMsg(count=newMsgNum+5)
             while self.msgNew:
-                print '%s in pool, %s to be processsed' %(len(self.msgPool), len(self.msgNew))
+                #print '%s in pool, %s to be processsed' %(len(self.msgPool), len(self.msgNew))
                 msg = self.msgNew.pop()
                 if msg['id'] > self.msgPool[-1]: #str compare here
                     self._processMsg(msg)
