@@ -3,8 +3,11 @@
 
 '''a wechat droid'''
 
+__author__ = 'Yifei Kong'
 __email__ = 'kongyifei@gmail.com'
 __date__ = '2012-09-15'
+__license__ = 'MIT'
+__version__ = '0.1'
 
 import requests, hashlib, re, json, sqlite3, random, sys
 
@@ -16,8 +19,8 @@ class WechatDroid:
         self.passwd = passwd
         #消息池
         self.msgPool = [] #只保存msgid len(msgPool) == 5*msgRate
-        self.msgNew = [] #new messages Num + 5
-        self.msgRate = 5 #last msg num
+        self.msgNew = [] #新消息数 + 5
+        self.msgRate = 5 #上次消息数
         #模拟浏览器
         self.cookies = {}
         self.headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:15.0) Gecko/20100101 Firefox/15.0'}
@@ -50,7 +53,7 @@ class WechatDroid:
     def _getHash(self, code1, code2):
         '''
         a little black magic tencnet uses to protect your password
-        see more at 
+        see more at http://www.oschina.net/code/snippet_219811_13204
         '''
         
         print 'calculating...'
@@ -62,7 +65,7 @@ class WechatDroid:
 
     def _checkin(self):
         '''
-        contact with the login server to see whether a verify code is needed
+        询问服务器是否需要验证码
         '''
         
         print 'getting verify code'
@@ -72,10 +75,10 @@ class WechatDroid:
             return matchResult.group(2), matchResult.group(3)
         else:
             print 'verify code needed!\ntry login on this IP address 4 or 5 times to avoid this.'
-            sys.exit(-1)# ugly, iknow it
+            sys.exit(-1)# ugly, i know it
 
     def login(self):
-        ''''''
+        '''登录'''
         print 'logging in...'
         verifyCode1, verifyCode2 = self._checkin()
         r = self._httpGet(self.loginURI.format(self.uin, self._getHash(verifyCode1, verifyCode2), verifyCode1))
@@ -92,7 +95,7 @@ class WechatDroid:
         return int(r.json['newTotalMsgCount'])
 
     def _processMsg(self, msg):
-        '''预处理消息'''
+        '''处理消息'''
         
         msg['content'] = msg['content'].lstrip().rstrip().replace('?', '').replace(u'？','').replace('&nbsp;', '')
         print msg['content']
@@ -102,6 +105,8 @@ class WechatDroid:
             self._respondMsg(msg)
 
     def _learn(self, msg):
+        '''学习新会话内容'''
+
         print 'learning...'
         question, answer = msg['content'][5:].split('=')
         with sqlite3.connect(self.db, isolation_level=None) as db:
@@ -111,6 +116,8 @@ class WechatDroid:
                 
 
     def _respondMsg(self, msg):
+        '''回应消息'''
+
         print 'responding...'
         question = msg['content']
         with sqlite3.connect(self.db, isolation_level=None) as db:
@@ -126,6 +133,8 @@ class WechatDroid:
                 self._sendMsg(fakeId=msg['fakeId'], content=random.sample(answers,1)[0][0])
 
     def _sendMsg(self, fakeId, content):
+        '''发送消息'''
+
         params = {
             't': 'ajax-response',
             'lang': 'en'
@@ -141,6 +150,7 @@ class WechatDroid:
         self._httpPost(self.sendMsgURI, params=params, data=data)
 
     def _getMsg(self, init=False, count='50'):
+        '''收取消息'''
 
         params={
             't': 'wxm-message',
@@ -163,15 +173,20 @@ class WechatDroid:
             print 'getting messages...'
             self.msgNew.extend(msgs)
 
-    def work(self, autorelogin=True):
-        #initiating
+    def work(self):
+        '''
+        工作循环,初始化后阻塞在收取消息
+        处理self.msgNew池中的新消息后加入self.msgPool队列
+        '''
+
+        #初始化
         print 'work started'
         self._getMsg(init=True)
-        self.msgPool.append(-1) #in case no initial messages got
+        self.msgPool.append(-1) #in case no initial messages got, negative one is smaller than any str
         self.msgPool.sort()
-        print 'now,we have %s messages in pool' %len(self.msgPool)
+        #print 'now,we have %s messages in pool' %len(self.msgPool)
         
-        #working, blocked at getting messages
+        #工作循环
         while 1:
             newMsgNum = self._getMsgNum()
             if newMsgNum > 0:
@@ -183,12 +198,9 @@ class WechatDroid:
                     self._processMsg(msg)
                     self.msgPool.append(msg['id'])
 
-            self.msgPool = self.msgPool[-self.msgRate * 5:]
+            self.msgPool = self.msgPool[-self.msgRate * 5:]#删除旧消息，保证已处理消息队列不太大
             self.msgPool.sort()
             self.msgRate = newMsgNum
-
-    def hello(self):
-        pass
 
 if __name__ == '__main__':
     r2d2 = WechatDroid('qqnumber', 'qqpassword')
