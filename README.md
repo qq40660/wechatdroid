@@ -6,4 +6,4 @@ WechatDroid
 欢迎调戏
 
 ![微信ID:little_buaa](https://github.com/yifeikong/wechatdroid/raw/master/images/little_buaa.jpg)
-![微信ID:little_buaa](https://github.com/yifeikong/wechatdroid/raw/master/images/chatting.jpg)
+![chat screenshot](https://github.com/yifeikong/wechatdroid/raw/master/images/chatting.png)
