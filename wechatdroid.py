@@ -123,7 +123,7 @@ class WechatDroid:
             c = db.cursor()
             c.execute("insert into known (question, answer) values(?,?)", (question, answer))
             c.execute("delete from unknown where question = ?", (question,))
-        self._sendMsg(fakeId=msg['fakeId'], content=u'学会了')
+        self._sendMsg(fakeId=msg['fakeId'], content=u'好的，学会了')
 
     def _respondMsg(self, msg):
         '''回应消息'''
