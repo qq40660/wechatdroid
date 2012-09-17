@@ -38,17 +38,21 @@ class WechatDroid:
 
     def _httpPost(self, uri, data=None, params=None):
         '''post method dealing with cookies'''
-
-        r = requests.post(uri, data=data, params=params, cookies=self.cookies, headers=self.headers)
-        self.cookies = r.cookies
-        return r
+        try:
+            r = requests.post(uri, data=data, params=params, cookies=self.cookies, headers=self.headers)
+            self.cookies = r.cookies
+            return r
+        except :
+            print 'we lost something'
 
     def _httpGet(self, uri, params=None):
         '''get method dealing with cookies'''
-
-        r = requests.get(uri, params=params, cookies=self.cookies, headers=self.headers)
-        self.cookies = r.cookies
-        return r
+        try:
+            r = requests.get(uri, params=params, cookies=self.cookies, headers=self.headers)
+            self.cookies = r.cookies
+            return r
+        except :
+            print 'we lost something'
 
     def _getHash(self, code1, code2):
         '''
@@ -97,7 +101,7 @@ class WechatDroid:
     def _processMsg(self, msg):
         '''处理消息'''
         
-        msg['content'] = msg['content'].lstrip().rstrip().replace('?', '').replace(u'？','').replace('&nbsp;', '')
+        msg['content'] = self._prettifyContent(msg['content'])
         print msg['content']
         if msg['content'].startswith('teach'):
             self._learn(msg)
@@ -109,28 +113,34 @@ class WechatDroid:
 
         print 'learning...'
         question, answer = msg['content'][5:].split('=')
+        question = self._prettifyContent(question).lower()
+        answer = self._prettifyContent(answer)
         with sqlite3.connect(self.db, isolation_level=None) as db:
             c = db.cursor()
             c.execute("insert into known (question, answer) values(?,?)", (question, answer))
+            c.execute("delete from unknown where question = ?", (question,))
         self._sendMsg(fakeId=msg['fakeId'], content=u'学会了')
-                
 
     def _respondMsg(self, msg):
         '''回应消息'''
 
         print 'responding...'
-        question = msg['content']
+        question = self._prettifyContent(msg['content']).lower()
         with sqlite3.connect(self.db, isolation_level=None) as db:
             c = db.cursor()
             answers = c.execute("select answer from known where question = ?", (question,)).fetchall()
+            print answers
             if answers == []:
                 c.execute("insert into unknown (question) values (?)", (question,))
-                self._sendMsg(fakeId=msg['fakeId'], content=u'这是什么')
-                self._sendMsg(fakeId=msg['fakeId'], content=u'可以使用teach+问题+"="+答案来教会我哦。')
+                self._sendMsg(fakeId=msg['fakeId'], content=u'这是什么?')
+                self._sendMsg(fakeId=msg['fakeId'], content=u'可以使用\n"teach 问题=答案"\n来教我哦。')
             else:
-                #[(answer,)]
+                #[(answer1,), (answer2,)]
                 #print random.sample(answers,1)[0][0]
                 self._sendMsg(fakeId=msg['fakeId'], content=random.sample(answers,1)[0][0])
+
+    def _prettifyContent(self,s):
+        return s.replace('&nbsp;', ' ').rstrip(u'.?!。？！ ').lstrip()
 
     def _sendMsg(self, fakeId, content):
         '''发送消息'''
