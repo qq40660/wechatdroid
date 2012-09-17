@@ -41,7 +41,7 @@ class WechatDroid:
         try:
             r = requests.post(uri, data=data, params=params, cookies=self.cookies, headers=self.headers)
             self.cookies = r.cookies
-            return r
+            return r.json or r.text
         except :
             print 'we lost something'
 
@@ -50,7 +50,7 @@ class WechatDroid:
         try:
             r = requests.get(uri, params=params, cookies=self.cookies, headers=self.headers)
             self.cookies = r.cookies
-            return r
+            return r.json or r.text
         except :
             print 'we lost something'
 
@@ -74,7 +74,7 @@ class WechatDroid:
         
         print 'getting verify code'
         r = self._httpGet(self.checkinURI.format(self.uin))
-        matchResult = re.match(r"\w+\('(\d)','(.*)','(.*)'\);", r.text)
+        matchResult = re.match(r"\w+\('(\d)','(.*)','(.*)'\);", r)
         if matchResult.group(1) != 0:
             return matchResult.group(2), matchResult.group(3)
         else:
@@ -86,7 +86,7 @@ class WechatDroid:
         print 'logging in...'
         verifyCode1, verifyCode2 = self._checkin()
         r = self._httpGet(self.loginURI.format(self.uin, self._getHash(verifyCode1, verifyCode2), verifyCode1))
-        if u'登录成功' in r.text: 
+        if u'登录成功' in r: 
             print 'logged in'
 
     def _getMsgNum(self):
@@ -96,7 +96,7 @@ class WechatDroid:
         data = {'ajax': 'true'}
         r = self._httpPost(self.getMsgNumURI, params=params, data=data)
         #print '%s new messages'% r.json['newTotalMsgCount']
-        return int(r.json['newTotalMsgCount'])
+        return int(r['newTotalMsgCount'])
 
     def _processMsg(self, msg):
         '''处理消息'''
@@ -171,9 +171,9 @@ class WechatDroid:
         }
         r = self._httpGet(self.getMsgURI, params=params)
         print 'getting last msg id...'
-        self.lastMsgId = re.findall(r"DATA.lastMsgId = '(\d+)';", r.text)[0]
+        self.lastMsgId = re.findall(r"DATA.lastMsgId = '(\d+)';", r)[0]
         print 'getting msgList...'
-        msgsString = re.findall(r"DATA\.List\.msgList\s=\s(.*);DATA\.lastMsgId", r.text.replace('\n', '').replace("'", '"').replace(r'\x', ''))[0]
+        msgsString = re.findall(r"DATA\.List\.msgList\s=\s(.*);DATA\.lastMsgId", r.replace('\n', '').replace("'", '"').replace(r'\x', ''))[0]
         msgs = json.loads(msgsString)
 
         if init == True:
