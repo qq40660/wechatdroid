@@ -36,7 +36,6 @@ class WechatDroid:
         #sqlite3数据库,请用wechatdroid.sql初始化
         directory = os.path.dirname(os.path.abspath(sys.argv[0]))
         self.db = directory + '/' +'wechatdroid.db'
-        self.logs = directory + '/' +'wechatdroid.log'
 
     def _httpPost(self, uri, data=None, params=None):
         '''post method dealing with cookies'''
@@ -45,7 +44,7 @@ class WechatDroid:
             self.cookies = r.cookies
             return r.json or r.text
         except :
-            print time.asctime() + '|' +'we lost something'
+            print time.asctime() + ' | ' +'we lost something'
 
     def _httpGet(self, uri, params=None):
         '''get method dealing with cookies'''
@@ -54,7 +53,7 @@ class WechatDroid:
             self.cookies = r.cookies
             return r.json or r.text
         except :
-            print time.asctime() + '|' +'we lost something'
+            print time.asctime() + ' | ' +'we lost something'
 
     def _getHash(self, code1, code2):
         '''
@@ -62,7 +61,7 @@ class WechatDroid:
         see more at http://www.oschina.net/code/snippet_219811_13204
         '''
         
-        print time.asctime() + '|' +'calculating...'
+        print time.asctime() + ' | ' +'calculating...'
         hex_md5hash = lambda sth:hashlib.md5(sth).hexdigest().upper()
         hexchar2bin = lambda sth:''.join([chr(int(i, 16)) for i in sth.split(r'\x')[1:]])
 
@@ -70,27 +69,25 @@ class WechatDroid:
         return hex_md5hash(passwdPreHash + code1.upper()) 
 
     def _checkin(self):
-        '''
-        询问服务器是否需要验证码
-        '''
+        '''询问服务器是否需要验证码'''
         
-        print time.asctime() + '|' +'getting verify code'
+        print time.asctime() + ' | ' +'getting verify code'
         r = self._httpGet(self.checkinURI.format(self.uin))
         if r is not None:
             matchResult = re.match(r"\w+\('(\d)','(.*)','(.*)'\);", r)
             if matchResult.group(1) != 0:
                 return matchResult.group(2), matchResult.group(3)
             else:
-                print time.asctime() + '|' +'verify code needed!\ntry login with this IP address 4 or 5 times to avoid this.'
+                print time.asctime() + ' | ' +'verify code needed!\ntry login with this IP address 4 or 5 times to avoid this.'
                 sys.exit(-1)# ugly, i know it
 
     def login(self):
         '''登录'''
-        print time.asctime() + '|' +'logging in...'
+        print time.asctime() + ' | ' +'logging in...'
         verifyCode1, verifyCode2 = self._checkin()
         r = self._httpGet(self.loginURI.format(self.uin, self._getHash(verifyCode1, verifyCode2), verifyCode1))
         if u'登录成功' in r: 
-            print time.asctime() + '|' +'logged in'
+            print time.asctime() + ' | ' +'logged in'
 
     def _getMsgNum(self):
         '''获得新消息数'''
@@ -98,7 +95,7 @@ class WechatDroid:
         params = {'t': 'ajax-getmsgnum', 'lastmsgid': self.lastMsgId}
         data = {'ajax': 'true'}
         r = self._httpPost(self.getMsgNumURI, params=params, data=data)
-        #print time.asctime() + '|' +'%s new messages'% r.json['newTotalMsgCount']
+        #print time.asctime() + ' | ' +'%s new messages'% r.json['newTotalMsgCount']
         try:
             return int(r['newTotalMsgCount'])
         except:
@@ -108,7 +105,7 @@ class WechatDroid:
         '''处理消息'''
         
         msg['content'] = self._prettifyContent(msg['content'])
-        print time.asctime() + '|' +msg['content']
+        print time.asctime() + ' | ' +msg['content']
         if msg['content'].startswith('teach'):
             self._learn(msg)
         else:
@@ -117,7 +114,7 @@ class WechatDroid:
     def _learn(self, msg):
         '''学习新会话内容'''
 
-        print time.asctime() + '|' +'learning...'
+        print time.asctime() + ' | ' +'learning...'
         question, answer = msg['content'][5:].split('=', 1)
         question = self._prettifyContent(question).lower()
         answer = self._prettifyContent(answer)
@@ -130,7 +127,7 @@ class WechatDroid:
     def _respondMsg(self, msg):
         '''回应消息'''
 
-        print time.asctime() + '|' +'responding...'
+        print time.asctime() + ' | ' +'responding...'
         question = self._prettifyContent(msg['content']).lower()
         with sqlite3.connect(self.db, isolation_level=None) as db:
             c = db.cursor()
@@ -140,7 +137,7 @@ class WechatDroid:
                 self._sendMsg(fakeId=msg['fakeId'], content=u'你把小航问倒了...\n可以使用\n"teach 问题=答案"\n来教我哦。\n例如：teach来搞基么=下次在说吧！')
             else:
                 #[(answer1,), (answer2,)]
-                #print time.asctime() + '|' +random.sample(answers,1)[0][0]
+                #print time.asctime() + ' | ' +random.sample(answers,1)[0][0]
                 self._sendMsg(fakeId=msg['fakeId'], content=random.sample(answers,1)[0][0])
 
     def _prettifyContent(self,s):
@@ -175,17 +172,17 @@ class WechatDroid:
         }
         r = self._httpGet(self.getMsgURI, params=params)
         if r is not None:
-            print time.asctime() + '|' +'getting last msg id...'
+            print time.asctime() + ' | ' +'getting last msg id...'
             self.lastMsgId = int(re.findall(r"DATA.lastMsgId = '(\d+)';", r)[0])
-            print time.asctime() + '|' +'getting msgList...'
+            print time.asctime() + ' | ' +'getting msgList...'
             msgsString = re.findall(r"DATA\.List\.msgList\s=\s(.*);DATA\.lastMsgId", r.replace('\n', '').replace("'", '"').replace(r'\x3c', '<'))[0]
             msgs = json.loads(msgsString)
 
             if init:
                 self.msgPool.extend([msg['dateTime'] * 10000 + int(msg['id'])  for msg in msgs])
-                print time.asctime() + '|' +'%s initial messages got!' %len(self.msgPool)
+                print time.asctime() + ' | ' +'%s initial messages got!' %len(self.msgPool)
             else:
-                print time.asctime() + '|' +'getting messages...'
+                print time.asctime() + ' | ' +'getting messages...'
                 self.msgNew.extend(msgs)
 
     def work(self):
@@ -195,12 +192,12 @@ class WechatDroid:
         '''
 
         #初始化
-        print time.asctime() + '|' +'work started'
+        print time.asctime() + ' | ' +'work started'
         while self.lastMsgId == 0:
             self._getMsg(init=True)
-        self.msgPool.append(-1)
+        self.msgPool.append(-1) #防止获得空消息时pop出错
         self.msgPool.sort()
-        #print time.asctime() + '|' +'now,we have %s messages in pool' %len(self.msgPool)
+        #print time.asctime() + ' | ' +'now,we have %s messages in pool' %len(self.msgPool)
         
         #工作循环
         while 1:
@@ -208,10 +205,10 @@ class WechatDroid:
             if newMsgNum > 0:
                 self._getMsg(count=newMsgNum+5)
             while self.msgNew:
-                #print time.asctime() + '|' +'%s in pool, %s to be processsed' %(len(self.msgPool), len(self.msgNew))
+                #print time.asctime() + ' | ' +'%s in pool, %s to be processsed' %(len(self.msgPool), len(self.msgNew))
                 msg = self.msgNew.pop()
-                if msg['dateTime'] * 10000 + int(msg['id'])  > self.msgPool[-1]:#str cat here
-                    print time.asctime() + '|' +'valid message'
+                if msg['dateTime'] * 10000 + int(msg['id'])  > self.msgPool[-1]:#信息的唯一ID: 时间戳+ID
+                    print time.asctime() + ' | ' +'valid message'
                     self._processMsg(msg)
                     self.msgPool.append(msg['dateTime'] * 10000 + int(msg['id']) )
             
