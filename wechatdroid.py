@@ -11,9 +11,19 @@ __version__ = '0.1'
 
 import requests, hashlib, re, json, sqlite3, random, sys, os, time
 
+def lazify(laziness=0.5):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            #print "sleeping for %s seconds" % laziness
+            time.sleep(laziness)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
 class WechatDroid:
 
-    def __init__(self, uin, passwd):
+    def __init__(self, uin, passwd, laziness=0.5):
         #QQ的帐号和密码
         self.uin = uin
         self.passwd = passwd
@@ -36,6 +46,7 @@ class WechatDroid:
         #sqlite3数据库,请用wechatdroid.sql初始化
         directory = os.path.dirname(os.path.abspath(sys.argv[0]))
         self.db = directory + '/' +'wechatdroid.db'
+        self.laziness = laziness
 
     def _httpPost(self, uri, data=None, params=None):
         '''post method dealing with cookies'''
@@ -179,7 +190,7 @@ class WechatDroid:
             msgs = json.loads(msgsString)
 
             if init:
-                self.msgPool.extend([msg['dateTime'] * 10000 + int(msg['id'])  for msg in msgs])
+                self.msgPool.extend([msg['dateTime'] * 10000 + (int(msg['id']) % 10000)  for msg in msgs])
                 print time.asctime() + ' | ' +'%s initial messages got!' %len(self.msgPool)
             else:
                 print time.asctime() + ' | ' +'getting messages...'
@@ -198,23 +209,27 @@ class WechatDroid:
         self.msgPool.append(-1) #防止获得空消息时pop出错
         self.msgPool.sort()
         #print time.asctime() + ' | ' +'now,we have %s messages in pool' %len(self.msgPool)
-        
-        #工作循环
-        while 1:
+        #仅仅是想用一下新学的decorator 
+        @lazify(self.laziness)
+        def working():
             newMsgNum = self._getMsgNum()
             if newMsgNum > 0:
                 self._getMsg(count=newMsgNum+5)
             while self.msgNew:
                 #print time.asctime() + ' | ' +'%s in pool, %s to be processsed' %(len(self.msgPool), len(self.msgNew))
                 msg = self.msgNew.pop()
-                if msg['dateTime'] * 10000 + int(msg['id'])  > self.msgPool[-1]:#信息的唯一ID: 时间戳+ID
+                if msg['dateTime'] * 10000 + (int(msg['id']) % 10000)  > self.msgPool[-1]:#信息的唯一ID: 时间戳+ID
                     print time.asctime() + ' | ' +'valid message'
                     self._processMsg(msg)
-                    self.msgPool.append(msg['dateTime'] * 10000 + int(msg['id']) )
-            
+                    self.msgPool.append(msg['dateTime'] * 10000 + (int(msg['id']) % 10000) )
+
             self.msgPool = self.msgPool[-self.msgRate * 5:]
             self.msgPool.sort()
             self.msgRate = newMsgNum
+        #工作循环
+        while 1:
+            working()
+
 
 if __name__ == '__main__':
     r2d2 = WechatDroid('qqnumber', 'qqpassword')
