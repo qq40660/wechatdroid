@@ -116,7 +116,7 @@ class WechatDroid:
         '''处理消息'''
         
         msg['content'] = self._prettifyContent(msg['content'])
-        print time.asctime() + ' | ' +msg['content']
+        #print time.asctime() + ' | ' +msg['content']
         if msg['content'].startswith('teach'):
             self._learn(msg)
         else:
