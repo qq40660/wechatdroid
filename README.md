@@ -2,6 +2,7 @@ WechatDroid
 ===========
 
 This project is no longer maintained due to the newly announced official API
+
 可以自主学习的微信机器人
 
 Dependecies
