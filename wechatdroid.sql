@@ -1,2 +1,0 @@
-create table known (id integer primary key autoincrement, question text,answer text, time datetime default(datetime('now', 'localtime')));
-create table unknown (id integer primary key autoincrement, question text,time datetime default(datetime('now', 'localtime')));
